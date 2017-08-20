@@ -1,54 +1,8 @@
 #include "afx.h"
 
 #include "ble_advertising.h"
-
-void freeRtosAssertHandler()
-{
-	for(;;);
-}
-
-void vApplicationStackOverflowHook( TaskHandle_t xTask,
-                                    signed char *pcTaskName )
-{
-#if NRF_LOG_ENABLED
-	NRF_LOG_ERROR("Stack overflow in %s task\r\n", nrf_log_push((char *)pcTaskName));
-#endif //NRF_LOG_ENABLED
-}
-
-void vApplicationMallocFailedHook()
-{
-#if NRF_LOG_ENABLED
-	NRF_LOG_ERROR("Heap overrun\r\n");
-#endif //NRF_LOG_ENABLED
-}
-
-void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
-{
-	//LEDS_ON(ALL_APP_LED);
-	NRF_LOG_ERROR("Fatal\r\n");
-	error_info_t* pErrorInfo = (error_info_t*)info;
-    if(pErrorInfo != NULL)
-    {
-    	NRF_LOG_ERROR("Code: 0x%08x File: %s Line: %d\r\n", pErrorInfo->err_code, pErrorInfo->p_file_name, pErrorInfo->line_num);
-    }
-
-	//NRF_LOG_FINAL_FLUSH();
-    app_error_save_and_stop(id, pc, info);
-}
-
-void odb_service_notify_testValue(char);
-
-void vTestTask(void * arg)
-{
-	char counter = 0;
-	for(;;)
-	{
-		odb_service_notify_testValue(counter++);
-
-		NRF_LOG_INFO("Test Task: %03d\n\r", counter);
-		vTaskDelay(pdMS_TO_TICKS(1000));
-	}
-}
+#include "char_msg.h"
+#include "services.h"
 
 void vSDTask(void* arg)
 {
@@ -56,6 +10,23 @@ void vSDTask(void* arg)
 	{
 		intern_softdevice_events_execute();
 		vTaskDelay(50);
+	}
+}
+
+void vTestEnvTask(void* arg)
+{
+	QueueHandle_t outQ = (QueueHandle_t)arg;
+
+	char_msg_t charMsg;
+	charMsg.uuid = BLE_UUID_CHAR_TEMP;
+
+	uint8_t var = 0;
+	for(;;)
+	{
+		if(++var > 10) var = 0;
+		charMsg.value = 0xF0 + var;
+		xQueueSendToBack(outQ, &charMsg, portMAX_DELAY);
+		vTaskDelay(pdMS_TO_TICKS(1500));
 	}
 }
 
@@ -73,20 +44,30 @@ int main()
 	err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
 	APP_ERROR_CHECK(err_code);
 
-
-	 TaskHandle_t xTestTaskHandle;
-	if (pdPASS != xTaskCreate(vTestTask, "Test", 256, NULL, 2, &xTestTaskHandle))
-	{
-		APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
-	}
-
 	 TaskHandle_t xSDTaskHandle;
 	if (pdPASS != xTaskCreate(vSDTask, "SD", 256, NULL, 0, &xSDTaskHandle))
 	{
 		APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
 	}
 
-	if (pdPASS != xCreateObdTask())
+	QueueHandle_t bleInQ = xQueueCreate(5, sizeof(char_msg_t));
+	if (NULL == bleInQ)
+	{
+		APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+	}
+
+	if (pdPASS != xCreateObdTask(bleInQ))
+	{
+		APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+	}
+
+	if (pdPASS != xCreateBleTask(bleInQ))
+	{
+		APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+	}
+
+	TaskHandle_t xTestEnvTaskHandle;
+	if (pdPASS != xTaskCreate(vTestEnvTask, "Test", 100, bleInQ, 2, &xTestEnvTaskHandle))
 	{
 		APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
 	}

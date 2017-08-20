@@ -86,10 +86,12 @@ C_SOURCE_FILES += $(abspath $(FREE_RTOS)/source/tasks.c)
 C_SOURCE_FILES += $(abspath $(FREE_RTOS)/source/timers.c)
 C_SOURCE_FILES += $(abspath $(FREE_RTOS)/source/portable/MemMang/heap_4.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/main.c)
-C_SOURCE_FILES += $(abspath $(PROJ_DIR)/ble.c)
+C_SOURCE_FILES += $(abspath $(PROJ_DIR)/services/event_handlers.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/services/obd_service.c)
+C_SOURCE_FILES += $(abspath $(PROJ_DIR)/services/ble_service.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/drivers/kline_drv.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/tasks/obd.c)
+C_SOURCE_FILES += $(abspath $(PROJ_DIR)/tasks/ble.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/tasks/stats.c)
 
 #assembly files common to all targets

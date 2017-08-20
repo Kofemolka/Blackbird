@@ -17,11 +17,7 @@
 
 #define MAX_DYNAMICS_LEN (NRF_BLE_GATT_MAX_MTU_SIZE - OPCODE_LENGTH - HANDLE_LENGTH)
 
-#define configOBD_SERVICE_CHARS	1
-typedef enum
-{
-	ODB_SERVICE_CHAR_TEST = 0
-} enumObdServiceChars_t;
+#define configOBD_SERVICE_CHARS	2
 
 typedef struct
 {
@@ -46,27 +42,24 @@ void on_odb_service_ble_evt(ble_evt_t * p_ble_evt)
 
     NRF_LOG_INFO("on_odb_service_ble_evt: handle=%x len=%d data=%x\n\r", p_evt_write->handle, p_evt_write->len, p_evt_write->data);
 
-    if ( (p_evt_write->handle == m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].char_handle.cccd_handle) &&
-         (p_evt_write->len == 2) )
+    for(int c=0; c<configOBD_SERVICE_CHARS;c++)
     {
-        bool notif_enabled;
+		if ( (p_evt_write->handle == m_obd_service_data.chars[c].char_handle.cccd_handle) &&
+			 (p_evt_write->len == 2) )
+		{
+			bool notif_enabled;
 
-        notif_enabled = ble_srv_is_notification_enabled(p_evt_write->data);
+			notif_enabled = ble_srv_is_notification_enabled(p_evt_write->data);
 
-        if (m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].notify_enabled != notif_enabled)
-        {
-        	m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].notify_enabled = notif_enabled;
-
-          /*if (m_obd_data.evt_handler != NULL)
-            {
-            	m_obd_data.evt_handler(&m_obd_data, p_evt_write->data);
-            }*/
-        }
+			if (m_obd_service_data.chars[c].notify_enabled != notif_enabled)
+			{
+				m_obd_service_data.chars[c].notify_enabled = notif_enabled;
+			}
+		}
     }
 }
 
-
-static uint32_t test_char_add(const uint8_t uuid_type)
+static uint32_t add_char(const uint8_t uuid_type, uint8_t index, uint16_t uuid)
 {
     ret_code_t          err_code;
    ble_gatts_char_md_t char_md;
@@ -92,7 +85,7 @@ static uint32_t test_char_add(const uint8_t uuid_type)
    char_md.p_sccd_md         = NULL;
 
    char_uuid.type = uuid_type;
-   char_uuid.uuid = BLE_UUID_TEST_CHAR;
+   char_uuid.uuid = uuid;
 
    memset(&attr_md, 0, sizeof(attr_md));
 
@@ -111,13 +104,13 @@ static uint32_t test_char_add(const uint8_t uuid_type)
    attr_char_value.init_len  = 1;
    attr_char_value.init_offs = 0;
    attr_char_value.max_len   = 1;
-   m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value = 0xBE;
-   attr_char_value.p_value   = &m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value;
+   m_obd_service_data.chars[index].value = 0xBE;
+   attr_char_value.p_value   = &m_obd_service_data.chars[index].value;
 
    err_code = sd_ble_gatts_characteristic_add(m_obd_service_data.service_handle,
 											  &char_md,
 											  &attr_char_value,
-											  &m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].char_handle);
+											  &m_obd_service_data.chars[index].char_handle);
    APP_ERROR_CHECK(err_code);
 }
 
@@ -135,7 +128,8 @@ uint32_t obd_service_register()
 	APP_ERROR_CHECK(err_code);
 
 	// Add characteristics
-	return test_char_add(service_uuid.type);
+	APP_ERROR_CHECK(add_char(service_uuid.type, ID_CHAR_SPEED, BLE_UUID_CHAR_SPEED));
+	APP_ERROR_CHECK(add_char(service_uuid.type, ID_CHAR_TEMP, BLE_UUID_CHAR_TEMP));
 }
 
 
@@ -159,11 +153,11 @@ ret_code_t obd_service_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-void odb_service_notify_testValue(char value)
+void ble_service_notify(uint8_t index, char value)
 {
     uint32_t err_code = NRF_SUCCESS;
 
-	if (value != m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value)
+	if (value != m_obd_service_data.chars[index].value)
 	{
 		ble_gatts_value_t gatts_value;
 
@@ -176,19 +170,19 @@ void odb_service_notify_testValue(char value)
 
 		// Update database.
 		err_code = sd_ble_gatts_value_set(m_conn_handle,
-										  m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].char_handle.value_handle,
+										  m_obd_service_data.chars[index].char_handle.value_handle,
 										  &gatts_value);
 		if (err_code == NRF_SUCCESS)
 		{
 			// Save new battery value.
-			m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value = value;
+			m_obd_service_data.chars[index].value = value;
 		}
 		else
 		{
 			return;
 		}
 
-		if(m_conn_handle != BLE_CONN_HANDLE_INVALID && m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].notify_enabled)
+		if(m_conn_handle != BLE_CONN_HANDLE_INVALID && m_obd_service_data.chars[index].notify_enabled)
 		{
 			ble_gatts_hvx_params_t hvx_params;
 
@@ -197,11 +191,11 @@ void odb_service_notify_testValue(char value)
 			// Initialize value struct.
 			memset(&hvx_params, 0, sizeof(hvx_params));
 
-			hvx_params.handle = m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].char_handle.value_handle;
+			hvx_params.handle = m_obd_service_data.chars[index].char_handle.value_handle;
 			hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
 			hvx_params.p_len  = &hvx_len;
 			hvx_params.offset = 0;
-			hvx_params.p_data = &m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value;
+			hvx_params.p_data = &m_obd_service_data.chars[index].value;
 
 			err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
 		}
