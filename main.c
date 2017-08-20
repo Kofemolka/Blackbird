@@ -86,6 +86,13 @@ int main()
 		APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
 	}
 
+	if (pdPASS != xCreateObdTask())
+	{
+		APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
+	}
+
+	xCreateStatsTask(0);
+
 
 	NRF_LOG_INFO("Ready\n\r");
 	vTaskStartScheduler();

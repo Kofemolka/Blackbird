@@ -89,6 +89,8 @@ C_SOURCE_FILES += $(abspath $(PROJ_DIR)/main.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/ble.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/services/obd_service.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/drivers/kline_drv.c)
+C_SOURCE_FILES += $(abspath $(PROJ_DIR)/tasks/obd.c)
+C_SOURCE_FILES += $(abspath $(PROJ_DIR)/tasks/stats.c)
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  = $(abspath $(SDK_ROOT)/components/toolchain/gcc/gcc_startup_nrf52.S)

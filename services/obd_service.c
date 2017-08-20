@@ -126,7 +126,7 @@ uint32_t obd_service_register()
     ble_uuid_t service_uuid;
 	ret_code_t err_code;
 
-	service_uuid.uuid = BLE_UUID_TEST_CHAR;
+	service_uuid.uuid = BLE_UUID_OBD_SERVICE;
 
 	err_code = sd_ble_uuid_vs_add(&m_base_uuid128, &service_uuid.type);
 	APP_ERROR_CHECK(err_code);
