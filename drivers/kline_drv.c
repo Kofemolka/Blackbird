@@ -1,5 +1,9 @@
 #include "afx.h"
 
+#include "nrf_delay.h"
+#include "app_uart.h"
+#include "app_error.h"
+
 #define BT_DEBUG 0
 #if BT_DEBUG == 1
 #define log(arg) { BT.println(arg); }
@@ -7,40 +11,87 @@
 #define log(...)
 #endif
 
+#define ISORequestByteDelay		10
+#define ISORequestDelay			40 // Time between requests.
+#define MAXSENDTIME 			2000 // 2 second timeout on KDS comms.
+
+const uint8_t MyAddr = 0xF1;
+const uint8_t ECUaddr = 0x11;
+
+#define configTXPin				10
+
+static uint8_t format = 0x81;
+static uint8_t ecuResponse[12];
+
 static volatile bool m_ecuOnline = false;
 
+void uart_error_handle(app_uart_evt_t * p_event)
+{
+    if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR)
+    {
+        APP_ERROR_HANDLER(p_event->data.error_communication);
+    }
+    else if (p_event->evt_type == APP_UART_FIFO_ERROR)
+    {
+        APP_ERROR_HANDLER(p_event->data.error_code);
+    }
+}
+
+static void uart_init()
+{
+	uint32_t err_code;
+
+	const app_uart_comm_params_t comm_params =
+	      {
+	          RX_PIN_NUMBER,
+	          TX_PIN_NUMBER,
+	          RTS_PIN_NUMBER,
+	          CTS_PIN_NUMBER,
+	          APP_UART_FLOW_CONTROL_DISABLED,
+	          false,
+	          UART_BAUDRATE_BAUDRATE_Baud9600
+	      };
+
+	APP_UART_INIT(&comm_params,
+					 uart_error_handle,
+					 APP_IRQ_PRIORITY_LOWEST,
+					 err_code);
+
+	APP_ERROR_CHECK(err_code);
+}
 //#include <SoftwareSerial.h>
 
-SoftwareSerial KSerial(K_IN, K_OUT);
+//SoftwareSerial KSerial(K_IN, configTXPin);
 
 // ECU Init Pulse (ISO 14230-2)
-bool fastInit()
+static bool fast_init()
 {
   uint8_t rLen;
   uint8_t req[2];
   uint8_t resp[3];
 
-  KSerial.end();
-  digitalWrite(K_OUT, LOW);
-  delay(25);
+  app_uart_close();
+  nrf_gpio_cfg_output(configTXPin);
+
+  nrf_gpio_pin_write(configTXPin, 0);
+  nrf_delay_ms(10);
 
   // This is the ISO 14230-2 "Fast Init" sequence.
-  digitalWrite(K_OUT, HIGH);
-  delay(300);
-  digitalWrite(K_OUT, LOW);
-  delay(25);
-  digitalWrite(K_OUT, HIGH);
-  delay(25);
+  nrf_gpio_pin_write(configTXPin, 1);
+  nrf_delay_ms(300);
+  nrf_gpio_pin_write(configTXPin, 0);
+  nrf_delay_ms(25);
+  nrf_gpio_pin_write(configTXPin, 1);
+  nrf_delay_ms(25);
   // Should be 10417
-  KSerial.begin(9600);
-  
-  log("Fast Init sent");
+  uart_init();
+
   // Start Communication is a single byte "0x81" packet.
   //81 means Format without Header Information (Sender / Receiver)
   format = 0x81;
   req[0] = 0x81;
   rLen = sendRequest(req, resp, 1, 3);
-  delay(ISORequestDelay);
+  nrf_delay_ms(ISORequestDelay);
 
   log("0x81 cmd resp:");
   log("rLen=");
@@ -55,24 +106,22 @@ bool fastInit()
     // 2 bytes: 0x10 0x80
     req[0] = 0x10;
     req[1] = 0x80;
-	log("Sending 0x1080");
+
     rLen = sendRequest(req, resp, 2, 3);    
     // OK Response should be 2 bytes: 0x50 0x80
-	log("0x1080 rLen=");
-		log(rLen);
-    if ((rLen == 2) && (resp[0] == 0x50) && (resp[1] == 0x80))
+	if ((rLen == 2) && (resp[0] == 0x50) && (resp[1] == 0x80))
     {
-      digitalWrite(BOARD_LED, HIGH);
       m_ecuOnline = true;
       return true;
     }
   }
+
   // Otherwise, we failed to init.
-  digitalWrite(BOARD_LED, LOW);
   m_ecuOnline = false;
   return false;
 }
-bool stopComm()
+
+static bool stop_comm()
 {
   uint8_t rLen;
   uint8_t req[2];
@@ -92,46 +141,29 @@ bool stopComm()
   format = 0x80;
   req[0] = 0x82;  
   rLen = sendRequest(req, resp, 1, 3);
-  digitalWrite(BOARD_LED, LOW);
+
   m_ecuOnline = false;
   return true;
 }
 
-bool kline_drv_process_request(uint8_t pid)
+// Checksum is simply the sum of all data bytes modulo 0xFF
+// (same as being truncated to one byte)
+static uint8_t calcChecksum(uint8_t *data, uint8_t len)
 {
-  uint8_t cmdSize;
-  uint8_t cmdBuf[6];  
-  uint8_t resultBufSize;
+  uint8_t crc = 0;
 
-  cmdSize = 2;
-
-  // Zero the response buffer up to maxLen
-  for (uint8_t i = 0; i < 12; i++)
+  for (uint8_t i = 0; i < len; i++)
   {
-    ecuResponse[i] = 0;
+    crc = crc + data[i];
   }
-  
-  if(ECUconnected)
-  {
-    // Status:
-    //cmdBuf[0] = 0x21;
-    cmdBuf[0] = translatedSID;
-    // PID  
-    cmdBuf[1] = pid;
-  
-    // resultBufSize enthaellt die länge der antwort der ECU
-    resultBufSize = sendRequest(cmdBuf, ecuResponse, cmdSize, 12);
-    
-    //Buffer is empty?
-    return resultBufSize > 0;
-  }
-  return false;
+  return crc;
 }
+
 
 // Tom Mitchell https://bitbucket.org/tomnz/kawaduino
 // (Kawaduino)
 // https://www.youtube.com/watch?v=ie-Pfxzt-yQ
-uint8_t sendRequest(const uint8_t *request, uint8_t *response, uint8_t reqLen, uint8_t maxLen)
+static uint8_t send_request(const uint8_t *request, uint8_t *response, uint8_t reqLen, uint8_t maxLen)
 {
   // Send a request to the ECU and wait for the response
   // request = buffer to send
@@ -152,16 +184,8 @@ uint8_t sendRequest(const uint8_t *request, uint8_t *response, uint8_t reqLen, u
   //char radioBuf[32];
   uint32_t startTime;
 
-  for (uint8_t i = 0; i < 16; i++)
-  {
-    buf[i] = 0;
-  }
-
-  // Zero the response buffer up to maxLen
-  for (uint8_t i = 0; i < maxLen; i++)
-  {
-    response[i] = 0;
-  }
+  memset(buf, 0, 16);
+  memset(response, 0, maxLen);
 
   // Form the request:
 //  if (reqLen == 1)
@@ -197,30 +221,27 @@ uint8_t sendRequest(const uint8_t *request, uint8_t *response, uint8_t reqLen, u
     bytesToSend = 5 + z;
   }
 
-  // Now send the command...  
-  log("TX:");
+  // Now send the command...
   for (uint8_t i = 0; i < bytesToSend; i++)
   {
-    bytesSent += KSerial.write(buf[i]);	
-    delay(ISORequestByteDelay);
+    bytesSent += app_uart_put(buf[i]);
+    nrf_delay_ms(ISORequestByteDelay);
   }
   // Wait required time for response.
   // as no LEDs do standard delay
   // delayLeds(ISORequestDelay, false);
-  delay(ISORequestDelay);
+  nrf_delay_ms(ISORequestDelay);
   startTime = millis();
 
   // Wait for and deal with the reply  
   while ((bytesRcvd <= maxLen) && ((millis() - startTime) < MAXSENDTIME))
   {
-    if (KSerial.available())
+    if (app_uart_get(&c) == NRF_SUCCESS)
     {
-      c = KSerial.read();
-	  log("RX:"); log(c);
       startTime = millis(); // reset the timer on each byte received
 
       //delayLeds(ISORequestByteDelay, true);
-      delay(ISORequestByteDelay);
+      nrf_delay_ms(ISORequestByteDelay);
       rbuf[rCnt] = c;
       switch (rCnt)
       {
@@ -280,7 +301,7 @@ uint8_t sendRequest(const uint8_t *request, uint8_t *response, uint8_t reqLen, u
               // Only check the checksum if it was for us - don't care otherwise!
               if (calcChecksum(rbuf, rCnt) == rbuf[rCnt])
               {
-                lastKresponse = millis();
+                //lastKresponse = millis();
                 // Checksum OK.
                 return (bytesRcvd);
               } else
@@ -297,7 +318,7 @@ uint8_t sendRequest(const uint8_t *request, uint8_t *response, uint8_t reqLen, u
             // ISO 14230 specifies a delay between ECU responses.
             // as we have no leds, imply standard delay
             //delayLeds(ISORequestDelay, true);
-            delay(ISORequestDelay);
+            nrf_delay_ms(ISORequestDelay);
           }
           else
           {
@@ -317,16 +338,36 @@ uint8_t sendRequest(const uint8_t *request, uint8_t *response, uint8_t reqLen, u
   return false;
 }
 
-// Checksum is simply the sum of all data bytes modulo 0xFF
-// (same as being truncated to one byte)
-uint8_t calcChecksum(uint8_t *data, uint8_t len)
-{
-  uint8_t crc = 0;
 
-  for (uint8_t i = 0; i < len; i++)
+//////////////////////////////////////////
+// Public functions
+
+
+bool kline_drv_process_request(uint8_t pid)
+{
+  uint8_t cmdSize;
+  uint8_t cmdBuf[6];
+  uint8_t resultBufSize;
+
+  cmdSize = 2;
+
+  if(m_ecuOnline)
   {
-    crc = crc + data[i];
+    // Status:
+    cmdBuf[0] = 0x21;
+
+    // PID
+    cmdBuf[1] = pid;
+
+    // resultBufSize enthaellt die länge der antwort der ECU
+    resultBufSize = send_request(cmdBuf, ecuResponse, cmdSize, 12);
+
+    //Buffer is empty?
+    return resultBufSize > 0;
   }
-  return crc;
+
+  return false;
 }
+
+
 
