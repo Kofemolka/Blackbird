@@ -6,7 +6,7 @@ export OUTPUT_FILENAME
 MAKEFILE_NAME := $(MAKEFILE_LIST)
 MAKEFILE_DIR := $(dir $(MAKEFILE_NAME) ) 
 
-SDK_ROOT := d:\Nordic\nRF5_SDK_13.1.0_7ca7556
+SDK_ROOT := e:\Nordic\nRF5_SDK_13.1.0_7ca7556
 FREE_RTOS := $(SDK_ROOT)/external/freertos
 PROJ_DIR := .
 
@@ -88,6 +88,7 @@ C_SOURCE_FILES += $(abspath $(FREE_RTOS)/source/portable/MemMang/heap_4.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/main.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/ble.c)
 C_SOURCE_FILES += $(abspath $(PROJ_DIR)/services/obd_service.c)
+C_SOURCE_FILES += $(abspath $(PROJ_DIR)/drivers/kline_drv.c)
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  = $(abspath $(SDK_ROOT)/components/toolchain/gcc/gcc_startup_nrf52.S)
@@ -129,6 +130,7 @@ INC_PATHS += -I$(abspath $(PROJ_DIR)/include)
 INC_PATHS += -I$(abspath $(PROJ_DIR)/config)
 INC_PATHS += -I$(abspath $(PROJ_DIR)/tasks)
 INC_PATHS += -I$(abspath $(PROJ_DIR)/drivers)
+INC_PATHS += -I$(abspath $(PROJ_DIR)/services)
 
 OBJECT_DIRECTORY = _build
 LISTING_DIRECTORY = $(OBJECT_DIRECTORY)

@@ -15,6 +15,8 @@
 #include "softdevice_handler.h"
 #include "bsp.h"
 
+#include "services.h"
+
 #define APP_FEATURE_NOT_SUPPORTED        BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2   /**< Reply when unsupported features are requested. */
 
 #define DEVICE_NAME                      "Blackbird_v3"                            /**< Name of device. Will be included in the advertising data. */
@@ -24,8 +26,6 @@
 #define CONN_SUP_TIMEOUT                 MSEC_TO_UNITS(4000, UNIT_10_MS)        /**< Connection supervisory time-out (4 seconds). */
 #define APP_ADV_INTERVAL                 300                                    /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS       180                                    /**< The advertising time-out in units of seconds. */
-
-#define BLE_UUID_OBD_SERVICE                                        0x21FA     /**< The UUID of the Custom Obd Data Service. */
 
 static nrf_ble_gatt_t m_gatt;                               /**< GATT module instance. */
 uint16_t  m_conn_handle = BLE_CONN_HANDLE_INVALID;   /**< Handle of the current connection. */
@@ -116,9 +116,7 @@ static void advertising_init(void)
 
     err_code = ble_advertising_init(&advdata, NULL, &options, on_adv_evt, NULL);
     APP_ERROR_CHECK(err_code);
-
 }
-
 
 /**@brief Function for initializing the GATT module.
  */
@@ -220,6 +218,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 
             if (req.type != BLE_GATTS_AUTHORIZE_TYPE_INVALID)
             {
+            	NRF_LOG_INFO("BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST: wrtie.op=%d type=%d\n\r",
+            			req.request.write.op, req.type);
+
                 if ((req.request.write.op == BLE_GATTS_OP_PREP_WRITE_REQ)     ||
                     (req.request.write.op == BLE_GATTS_OP_EXEC_WRITE_REQ_NOW) ||
                     (req.request.write.op == BLE_GATTS_OP_EXEC_WRITE_REQ_CANCEL))
@@ -263,6 +264,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     ble_conn_params_on_ble_evt(p_ble_evt);
     //TODObsp_btn_ble_on_ble_evt(p_ble_evt);
 
+    //TODO: iterate thru all known services
     void on_odb_service_ble_evt(ble_evt_t * p_ble_evt);
     on_odb_service_ble_evt(p_ble_evt);
 

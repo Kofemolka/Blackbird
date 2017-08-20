@@ -7,21 +7,13 @@
 #include "afx.h"
 
 #include "ble_dis.h"
+#include "services.h"
 
 #define OPCODE_LENGTH 1
 #define HANDLE_LENGTH 2
 
 #define MANUFACTURER_NAME                "Kofe.shop"
 /**@brief 128-bit UUID base List. */
-static const ble_uuid128_t m_base_uuid128 =
-{
-   {
-       0x23, 0xD1, 0xBC, 0xEA, 0x5F, 0x78, 0x23, 0x15,
-       0xDE, 0xEF, 0x12, 0x12, 0x00, 0x00, 0x00, 0x00
-   }
-};
-#define BLE_UUID_OBD_SERVICE               0xC8D0
-#define BLE_UUID_TEST_CHAR              0xC8D1
 
 #define MAX_DYNAMICS_LEN (NRF_BLE_GATT_MAX_MTU_SIZE - OPCODE_LENGTH - HANDLE_LENGTH)
 
@@ -119,6 +111,7 @@ static uint32_t test_char_add(const uint8_t uuid_type)
    attr_char_value.init_len  = 1;
    attr_char_value.init_offs = 0;
    attr_char_value.max_len   = 1;
+   m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value = 0xBE;
    attr_char_value.p_value   = &m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value;
 
    err_code = sd_ble_gatts_characteristic_add(m_obd_service_data.service_handle,
@@ -170,27 +163,51 @@ void odb_service_notify_testValue(char value)
 {
     uint32_t err_code = NRF_SUCCESS;
 
-    m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value = value;
+	if (value != m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value)
+	{
+		ble_gatts_value_t gatts_value;
 
-    if(m_conn_handle != BLE_CONN_HANDLE_INVALID && m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].notify_enabled)
-    {
-        ble_gatts_hvx_params_t hvx_params;
+		// Initialize value struct.
+		memset(&gatts_value, 0, sizeof(gatts_value));
 
-         uint16_t hvx_len =1;
+		gatts_value.len     = sizeof(uint8_t);
+		gatts_value.offset  = 0;
+		gatts_value.p_value = &value;
 
-        // Initialize value struct.
-        memset(&hvx_params, 0, sizeof(hvx_params));
+		// Update database.
+		err_code = sd_ble_gatts_value_set(m_conn_handle,
+										  m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].char_handle.value_handle,
+										  &gatts_value);
+		if (err_code == NRF_SUCCESS)
+		{
+			// Save new battery value.
+			m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value = value;
+		}
+		else
+		{
+			return;
+		}
 
-        hvx_params.handle = m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].char_handle.value_handle;
-        hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
-        hvx_params.p_len  = &hvx_len;
-        hvx_params.offset = 0;
-        hvx_params.p_data = &m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value;
+		if(m_conn_handle != BLE_CONN_HANDLE_INVALID && m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].notify_enabled)
+		{
+			ble_gatts_hvx_params_t hvx_params;
 
-        err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
-    }
-    else
-    {
-        err_code = NRF_ERROR_INVALID_STATE;
-    }
+			uint16_t hvx_len =1;
+
+			// Initialize value struct.
+			memset(&hvx_params, 0, sizeof(hvx_params));
+
+			hvx_params.handle = m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].char_handle.value_handle;
+			hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
+			hvx_params.p_len  = &hvx_len;
+			hvx_params.offset = 0;
+			hvx_params.p_data = &m_obd_service_data.chars[ODB_SERVICE_CHAR_TEST].value;
+
+			err_code = sd_ble_gatts_hvx(m_conn_handle, &hvx_params);
+		}
+		else
+		{
+			err_code = NRF_ERROR_INVALID_STATE;
+		}
+	}
 }
