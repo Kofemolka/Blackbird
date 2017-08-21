@@ -20,11 +20,11 @@ static const ble_uuid128_t m_base_uuid128 =
 };
 
 #define BLE_UUID_OBD_SERVICE            0xC8D0
-#define BLE_UUID_CHAR_SPEED             0xC8D1
-#define BLE_UUID_CHAR_TEMP	            0xC8D2
 
-#define ID_CHAR_SPEED					0
-#define ID_CHAR_TEMP					1
-
+typedef enum {
+	ID_CHAR_SPEED = 0,
+	ID_CHAR_TEMP,
+	TOTAL_CHARS
+} CHAR_ID_t;
 
 #endif /* SERVICES_SERVICES_H_ */

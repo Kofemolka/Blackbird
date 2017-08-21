@@ -13,7 +13,7 @@
 
 #define ISORequestByteDelay		10
 #define ISORequestDelay			40 // Time between requests.
-#define MAXSENDTIME 			2000 // 2 second timeout on KDS comms.
+#define MAXSENDTIME 			pdMS_TO_TICKS(2000) // 2 second timeout on KDS comms.
 
 const uint8_t MyAddr = 0xF1;
 const uint8_t ECUaddr = 0x11;
@@ -24,6 +24,9 @@ static uint8_t format = 0x81;
 static uint8_t ecuResponse[12];
 
 static volatile bool m_ecuOnline = false;
+
+//forward declaration
+static uint8_t send_request(const uint8_t *request, uint8_t *response, uint8_t reqLen, uint8_t maxLen);
 
 void uart_error_handle(app_uart_evt_t * p_event)
 {
@@ -90,7 +93,7 @@ static bool fast_init()
   //81 means Format without Header Information (Sender / Receiver)
   format = 0x81;
   req[0] = 0x81;
-  rLen = sendRequest(req, resp, 1, 3);
+  rLen = send_request(req, resp, 1, 3);
   nrf_delay_ms(ISORequestDelay);
 
   log("0x81 cmd resp:");
@@ -107,7 +110,7 @@ static bool fast_init()
     req[0] = 0x10;
     req[1] = 0x80;
 
-    rLen = sendRequest(req, resp, 2, 3);    
+    rLen = send_request(req, resp, 2, 3);
     // OK Response should be 2 bytes: 0x50 0x80
 	if ((rLen == 2) && (resp[0] == 0x50) && (resp[1] == 0x80))
     {
@@ -131,7 +134,7 @@ static bool stop_comm()
   // 2 bytes: 0x20 0x80
   req[0] = 0x20;
   req[1] = 0x80;
-  rLen = sendRequest(req, resp, 2, 3);    
+  rLen = send_request(req, resp, 2, 3);
   // OK Response should be 2 bytes: 0x60 0x80
   if ((rLen != 2) || (resp[0] != 0x60) || (resp[1] != 0x80))
   {
@@ -140,7 +143,7 @@ static bool stop_comm()
   // Stop Communication is a single byte "0x82" packet.  
   format = 0x80;
   req[0] = 0x82;  
-  rLen = sendRequest(req, resp, 1, 3);
+  rLen = send_request(req, resp, 1, 3);
 
   m_ecuOnline = false;
   return true;
@@ -231,14 +234,14 @@ static uint8_t send_request(const uint8_t *request, uint8_t *response, uint8_t r
   // as no LEDs do standard delay
   // delayLeds(ISORequestDelay, false);
   nrf_delay_ms(ISORequestDelay);
-  startTime = millis();
+  startTime = xTaskGetTickCount();
 
   // Wait for and deal with the reply  
-  while ((bytesRcvd <= maxLen) && ((millis() - startTime) < MAXSENDTIME))
+  while ((bytesRcvd <= maxLen) && ((xTaskGetTickCount() - startTime) < MAXSENDTIME))
   {
     if (app_uart_get(&c) == NRF_SUCCESS)
     {
-      startTime = millis(); // reset the timer on each byte received
+      startTime = xTaskGetTickCount(); // reset the timer on each byte received
 
       //delayLeds(ISORequestByteDelay, true);
       nrf_delay_ms(ISORequestByteDelay);

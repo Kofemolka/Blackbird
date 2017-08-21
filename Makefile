@@ -6,7 +6,7 @@ export OUTPUT_FILENAME
 MAKEFILE_NAME := $(MAKEFILE_LIST)
 MAKEFILE_DIR := $(dir $(MAKEFILE_NAME) ) 
 
-SDK_ROOT := e:\Nordic\nRF5_SDK_13.1.0_7ca7556
+SDK_ROOT := d:\Nordic\nRF5_SDK_13.1.0_7ca7556
 FREE_RTOS := $(SDK_ROOT)/external/freertos
 PROJ_DIR := .
 
@@ -105,6 +105,7 @@ INC_PATHS += -I$(abspath $(SDK_ROOT)/components/boards)
 INC_PATHS += -I$(abspath $(SDK_ROOT)/components/ble/common)
 INC_PATHS += -I$(abspath $(SDK_ROOT)/components/ble/nrf_ble_gatt)
 INC_PATHS += -I$(abspath $(SDK_ROOT)/components/ble/ble_advertising)
+INC_PATHS += -I$(abspath $(SDK_ROOT)/components/ble/peer_manager)
 INC_PATHS += -I$(abspath $(SDK_ROOT)/components/ble/ble_services/ble_dis)
 INC_PATHS += -I$(abspath $(SDK_ROOT)/components/libraries/bsp)
 INC_PATHS += -I$(abspath $(SDK_ROOT)/components/libraries/uart)
@@ -165,7 +166,7 @@ CFLAGS += -DNRF_TLS_MAX_INSTANCE_COUNT=1
 CFLAGS += -DBOARD_PCA10040
 CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb -mabi=aapcs --std=gnu99
-CFLAGS += -w -O0 -g3
+CFLAGS += -Werror -O0 -g3
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in separate section. This will allow linker to dump unused functions
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing

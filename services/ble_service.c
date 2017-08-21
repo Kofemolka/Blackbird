@@ -11,8 +11,12 @@
 #include "ble_hci.h"
 #include "ble_advertising.h"
 #include "ble_srv_common.h"
+#include "ble_conn_params.h"
+#include "ble_conn_state.h"
 #include "nrf_ble_gatt.h"
 #include "softdevice_handler.h"
+#include "fstorage.h"
+#include "peer_manager.h"
 #include "bsp.h"
 
 #include "services.h"
@@ -260,20 +264,18 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
      * Remember to call ble_conn_state_on_ble_evt before calling any ble_conns_state_* functions. */
     ble_conn_state_on_ble_evt(p_ble_evt);
     pm_on_ble_evt(p_ble_evt);
-    //TODO ble_obd_data_on_ble_evt(&m_obd_data, p_ble_evt);
     ble_conn_params_on_ble_evt(p_ble_evt);
-    //TODObsp_btn_ble_on_ble_evt(p_ble_evt);
 
     //TODO: iterate thru all known services
-    void on_odb_service_ble_evt(ble_evt_t * p_ble_evt);
-    on_odb_service_ble_evt(p_ble_evt);
+    void odb_service_ble_evt(ble_evt_t * p_ble_evt);
+    odb_service_ble_evt(p_ble_evt);
 
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
     nrf_ble_gatt_on_ble_evt(&m_gatt, p_ble_evt);
 }
 
-void ble_stack_init(void)
+void ble_service_init(void)
 {
     ret_code_t err_code;
 

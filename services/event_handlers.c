@@ -33,7 +33,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 	error_info_t* pErrorInfo = (error_info_t*)info;
     if(pErrorInfo != NULL)
     {
-    	NRF_LOG_ERROR("Code: 0x%08x File: %s Line: %d\r\n", pErrorInfo->err_code, pErrorInfo->p_file_name, pErrorInfo->line_num);
+    	NRF_LOG_ERROR("Code: 0x%08x File: %s Line: %d\r\n", pErrorInfo->err_code, (int)pErrorInfo->p_file_name, pErrorInfo->line_num);
     }
 
 	//NRF_LOG_FINAL_FLUSH();

@@ -1,24 +1,14 @@
 #include "afx.h"
 
-#include "ble_advertising.h"
 #include "char_msg.h"
 #include "services.h"
-
-void vSDTask(void* arg)
-{
-	for(;;)
-	{
-		intern_softdevice_events_execute();
-		vTaskDelay(50);
-	}
-}
 
 void vTestEnvTask(void* arg)
 {
 	QueueHandle_t outQ = (QueueHandle_t)arg;
 
 	char_msg_t charMsg;
-	charMsg.uuid = BLE_UUID_CHAR_TEMP;
+	charMsg.charId = ID_CHAR_TEMP;
 
 	uint8_t var = 0;
 	for(;;)
@@ -30,25 +20,15 @@ void vTestEnvTask(void* arg)
 	}
 }
 
-void ble_stack_init();
-ret_code_t obd_service_init();
+//External functions declaration
+ret_code_t xCreateObdTask(QueueHandle_t outQ);
+ret_code_t xCreateBleTask(QueueHandle_t inQ);
+TaskHandle_t xCreateStatsTask(unsigned portBASE_TYPE uxPriority);
 
 int main()
 {
 	ret_code_t err_code = NRF_LOG_INIT(NULL);
 	APP_ERROR_CHECK(err_code);
-
-	ble_stack_init();
-	err_code = obd_service_init();
-	APP_ERROR_CHECK(err_code);
-	err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
-	APP_ERROR_CHECK(err_code);
-
-	 TaskHandle_t xSDTaskHandle;
-	if (pdPASS != xTaskCreate(vSDTask, "SD", 256, NULL, 0, &xSDTaskHandle))
-	{
-		APP_ERROR_HANDLER(NRF_ERROR_NO_MEM);
-	}
 
 	QueueHandle_t bleInQ = xQueueCreate(5, sizeof(char_msg_t));
 	if (NULL == bleInQ)

@@ -11,7 +11,7 @@
 #include "afx.h"
 
 typedef struct {
-	uint16_t uuid;
+	uint16_t charId; //zero based ID from CHAR_ID_t enum
 	uint16_t value;
 } char_msg_t;
 

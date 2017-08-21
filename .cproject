@@ -154,6 +154,7 @@
 		<buildTargets>
 			<target name="all" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
 				<buildCommand>${cross_make}</buildCommand>
+				<buildArguments/>
 				<buildTarget>all VERBOSE=1</buildTarget>
 				<stopOnError>true</stopOnError>
 				<useDefaultCommand>true</useDefaultCommand>
@@ -161,6 +162,7 @@
 			</target>
 			<target name="flash_softdevice" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
 				<buildCommand>${cross_make}</buildCommand>
+				<buildArguments/>
 				<buildTarget>flash_softdevice</buildTarget>
 				<stopOnError>true</stopOnError>
 				<useDefaultCommand>true</useDefaultCommand>
@@ -168,6 +170,7 @@
 			</target>
 			<target name="flash" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
 				<buildCommand>${cross_make}</buildCommand>
+				<buildArguments/>
 				<buildTarget>flash</buildTarget>
 				<stopOnError>true</stopOnError>
 				<useDefaultCommand>true</useDefaultCommand>

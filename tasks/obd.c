@@ -7,7 +7,7 @@ static QueueHandle_t m_outQ;
 void vObdTask(void * arg)
 {
 	char_msg_t charMsg;
-	charMsg.uuid = BLE_UUID_CHAR_SPEED;
+	charMsg.charId = ID_CHAR_SPEED;
 
 	for(;;)
 	{

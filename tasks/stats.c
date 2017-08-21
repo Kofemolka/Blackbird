@@ -55,8 +55,8 @@ static void vRtosTaskStats(void* arg)
 				if(ulStatsAsPercentage>100) ulStatsAsPercentage = 100;
 
 				NRF_LOG_INFO("%7s %9s %10d %7d %7d %3d%%\n\r",
-						pxTaskStatusArray[x].pcTaskName,
-						mapTaskStateStr[pxTaskStatusArray[x].eCurrentState],
+						(uint32_t)pxTaskStatusArray[x].pcTaskName,
+						(uint32_t)mapTaskStateStr[pxTaskStatusArray[x].eCurrentState],
 						pxTaskStatusArray[x].uxCurrentPriority,
 						pxTaskStatusArray[x].usStackHighWaterMark,
 						pxTaskStatusArray[x].ulRunTimeCounter,
