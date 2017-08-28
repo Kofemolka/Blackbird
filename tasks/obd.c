@@ -4,6 +4,8 @@
 
 static QueueHandle_t m_outQ;
 
+bool kline_drv_process_request(uint8_t pid);
+
 void vObdTask(void * arg)
 {
 	char_msg_t charMsg;
@@ -11,11 +13,11 @@ void vObdTask(void * arg)
 
 	for(;;)
 	{
-		charMsg.value += 10;
+		kline_drv_process_request(123);
 
 		xQueueSendToBack(m_outQ, &charMsg, portMAX_DELAY);
 
-		NRF_LOG_INFO("Obd Task\n\r");
+		//NRF_LOG_INFO("Obd Task\n\r");
 		vTaskDelay(pdMS_TO_TICKS(1000));
 	}
 }

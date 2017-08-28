@@ -21,7 +21,7 @@ void vBleTask(void * arg)
 {
 	ble_service_init();
 	APP_ERROR_CHECK(obd_service_init());
-	APP_ERROR_CHECK(ble_advertising_start(BLE_ADV_MODE_FAST));
+	//APP_ERROR_CHECK(ble_advertising_start(BLE_ADV_MODE_FAST));
 
 	for(;;)
 	{

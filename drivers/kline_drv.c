@@ -18,7 +18,8 @@
 const uint8_t MyAddr = 0xF1;
 const uint8_t ECUaddr = 0x11;
 
-#define configTXPin				10
+#define configTXPin				26
+#define configRXPin				27
 
 static uint8_t format = 0x81;
 static uint8_t ecuResponse[12];
@@ -46,8 +47,8 @@ static void uart_init()
 
 	const app_uart_comm_params_t comm_params =
 	      {
-	          RX_PIN_NUMBER,
-	          TX_PIN_NUMBER,
+	    	  configRXPin,
+			  configTXPin,
 	          RTS_PIN_NUMBER,
 	          CTS_PIN_NUMBER,
 	          APP_UART_FLOW_CONTROL_DISABLED,
@@ -69,6 +70,9 @@ static void uart_init()
 // ECU Init Pulse (ISO 14230-2)
 static bool fast_init()
 {
+	if(m_ecuOnline)
+		return true;
+
   uint8_t rLen;
   uint8_t req[2];
   uint8_t resp[3];
@@ -353,6 +357,8 @@ bool kline_drv_process_request(uint8_t pid)
   uint8_t resultBufSize;
 
   cmdSize = 2;
+
+  fast_init();
 
   if(m_ecuOnline)
   {
