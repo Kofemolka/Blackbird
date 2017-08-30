@@ -56,10 +56,17 @@ static void uart_init()
 	          UART_BAUDRATE_BAUDRATE_Baud9600
 	      };
 
-	APP_UART_INIT(&comm_params,
+	APP_UART_FIFO_INIT(&comm_params,
+						 128,
+						 128,
+						 uart_error_handle,
+						 APP_IRQ_PRIORITY_LOWEST,
+						 err_code);
+
+	/*APP_UART_INIT(&comm_params,
 					 uart_error_handle,
 					 APP_IRQ_PRIORITY_LOWEST,
-					 err_code);
+					 err_code);*/
 
 	APP_ERROR_CHECK(err_code);
 }
