@@ -23,8 +23,11 @@ typedef struct
 	uint8_t						value[2];
 } obd_service_char_data_t;
 
+//typedef void (*delCharSubscriptionChanged)(uint8_t);
+
 typedef struct
 {
+	//delCharSubscriptionChanged onCharSubscriptionChanged;
 	uint16_t service_handle;
 
 	obd_service_char_data_t chars[TOTAL_CHARS];
@@ -36,8 +39,6 @@ extern uint16_t                 m_conn_handle;
 void odb_service_ble_evt(ble_evt_t * p_ble_evt)
 {
     ble_gatts_evt_write_t * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
-
-    //NRF_LOG_INFO("on_odb_service_ble_evt: handle=%x len=%d data=%x\n\r", p_evt_write->handle, p_evt_write->len, p_evt_write->data);
 
     for(int c=0; c<TOTAL_CHARS;c++)
     {
@@ -51,6 +52,11 @@ void odb_service_ble_evt(ble_evt_t * p_ble_evt)
 			if (m_obd_service_data.chars[c].notify_enabled != notif_enabled)
 			{
 				m_obd_service_data.chars[c].notify_enabled = notif_enabled;
+
+				/*if(m_obd_service_data.onCharSubscriptionChanged != NULL)
+				{
+					m_obd_service_data.onCharSubscriptionChanged(c);
+				}*/
 			}
 		}
     }
@@ -131,7 +137,7 @@ uint32_t obd_service_register()
 }
 
 
-ret_code_t obd_service_init(void)
+ret_code_t obd_service_init()
 {
     ret_code_t      err_code;
     ble_dis_init_t  dis_init;

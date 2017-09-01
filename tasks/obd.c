@@ -4,7 +4,27 @@
 
 static QueueHandle_t m_outQ;
 
-bool kline_drv_process_request(uint8_t pid);
+bool kline_drv_process_request(uint8_t pid, uint8_t** response, uint8_t* respLength);
+
+typedef uint16_t (*delConvertResult)(uint8_t* resp, uint8_t respLength);
+
+uint16_t convertSpeed(uint8_t* resp, uint8_t respLength)
+{
+	if(respLength != 1)
+		return 0;
+
+	return resp[0] * 10; //example
+}
+
+typedef struct {
+	uint8_t pid;
+	uint8_t charId;
+	delConvertResult convert;
+} pid_2_char_t;
+
+static pid_2_char_t m_pids[] = {
+	{ .pid = 0x05, .charId = ID_CHAR_SPEED, .convert = convertSpeed }
+};
 
 void vObdTask(void * arg)
 {
@@ -13,12 +33,20 @@ void vObdTask(void * arg)
 
 	for(;;)
 	{
-		kline_drv_process_request(123);
+		for(int p=0; p<sizeof(m_pids)/sizeof(pid_2_char_t); p++)
+		{
+			uint8_t* pResponse;
+			uint8_t respLength;
+			if(kline_drv_process_request(m_pids[p].pid, &pResponse, &respLength))
+			{
+				charMsg.charId = m_pids[p].charId;
+				charMsg.value = m_pids[p].convert(pResponse, respLength);
 
-		xQueueSendToBack(m_outQ, &charMsg, portMAX_DELAY);
+				xQueueSendToBack(m_outQ, &charMsg, portMAX_DELAY);
+			}
+		}
 
-		//NRF_LOG_INFO("Obd Task\n\r");
-		vTaskDelay(pdMS_TO_TICKS(1000));
+		//vTaskDelay(pdMS_TO_TICKS(1000));
 	}
 }
 

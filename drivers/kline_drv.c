@@ -105,7 +105,7 @@ static bool fast_init()
   format = 0x81;
   req[0] = 0x81;
   rLen = send_request(req, resp, 1, 3);
-  nrf_delay_ms(ISORequestDelay);
+  vTaskDelay(ISORequestDelay);
 
   log("0x81 cmd resp:");
   log("rLen=");
@@ -239,12 +239,12 @@ static uint8_t send_request(const uint8_t *request, uint8_t *response, uint8_t r
   for (uint8_t i = 0; i < bytesToSend; i++)
   {
     bytesSent += app_uart_put(buf[i]);
-    nrf_delay_ms(ISORequestByteDelay);
+    vTaskDelay(ISORequestByteDelay);
   }
   // Wait required time for response.
   // as no LEDs do standard delay
   // delayLeds(ISORequestDelay, false);
-  nrf_delay_ms(ISORequestDelay);
+  vTaskDelay(ISORequestDelay);
   startTime = xTaskGetTickCount();
 
   // Wait for and deal with the reply  
@@ -255,7 +255,7 @@ static uint8_t send_request(const uint8_t *request, uint8_t *response, uint8_t r
       startTime = xTaskGetTickCount(); // reset the timer on each byte received
 
       //delayLeds(ISORequestByteDelay, true);
-      nrf_delay_ms(ISORequestByteDelay);
+      vTaskDelay(ISORequestByteDelay);
       rbuf[rCnt] = c;
       switch (rCnt)
       {
@@ -332,7 +332,7 @@ static uint8_t send_request(const uint8_t *request, uint8_t *response, uint8_t r
             // ISO 14230 specifies a delay between ECU responses.
             // as we have no leds, imply standard delay
             //delayLeds(ISORequestDelay, true);
-            nrf_delay_ms(ISORequestDelay);
+            vTaskDelay(ISORequestDelay);
           }
           else
           {
@@ -349,7 +349,7 @@ static uint8_t send_request(const uint8_t *request, uint8_t *response, uint8_t r
       }
     }
   }  
-  return false;
+  return (0);
 }
 
 
@@ -357,11 +357,10 @@ static uint8_t send_request(const uint8_t *request, uint8_t *response, uint8_t r
 // Public functions
 
 
-bool kline_drv_process_request(uint8_t pid)
+bool kline_drv_process_request(uint8_t pid, uint8_t** response, uint8_t* respLength)
 {
   uint8_t cmdSize;
   uint8_t cmdBuf[6];
-  uint8_t resultBufSize;
 
   cmdSize = 2;
 
@@ -375,11 +374,11 @@ bool kline_drv_process_request(uint8_t pid)
     // PID
     cmdBuf[1] = pid;
 
-    // resultBufSize enthaellt die länge der antwort der ECU
-    resultBufSize = send_request(cmdBuf, ecuResponse, cmdSize, 12);
+    *respLength = send_request(cmdBuf, ecuResponse, cmdSize, 12);
 
-    //Buffer is empty?
-    return resultBufSize > 0;
+    *response = ecuResponse;
+
+    return *respLength > 0;
   }
 
   return false;
